@@ -52,6 +52,33 @@ export async function signInWithMagicLink(formData: FormData) {
   );
 }
 
+export async function signInWithPassword(formData: FormData) {
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase();
+  const password = String(formData.get("password") ?? "");
+
+  if (!email) {
+    redirect(`/login?error=${encodeURIComponent("Email is required")}`);
+  }
+
+  if (!password) {
+    redirect(`/login?error=${encodeURIComponent("Password is required")}`);
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) {
+    redirect(`/login?error=${encodeURIComponent(error.message)}`);
+  }
+
+  redirect("/dashboard");
+}
+
 export async function signInWithGoogle(formData: FormData) {
   const next = safeNext(formData.get("next"));
   const supabase = await createClient();

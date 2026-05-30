@@ -1,6 +1,10 @@
 import { Mail } from "lucide-react";
 import { redirect } from "next/navigation";
-import { signInWithGoogle, signInWithMagicLink } from "@/app/(auth)/login/actions";
+import {
+  signInWithGoogle,
+  signInWithMagicLink,
+  signInWithPassword,
+} from "@/app/(auth)/login/actions";
 import { createClient } from "@/lib/supabase/server";
 
 type LoginPageProps = {
@@ -75,7 +79,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           <span className="h-px flex-1 bg-[#dde2ea]" />
         </div>
 
-        <form action={signInWithMagicLink} className="space-y-4">
+        <form className="space-y-4">
           <input name="next" type="hidden" value={next} />
           <label className="block text-sm font-medium text-[#333942]" htmlFor="email">
             Email address
@@ -92,8 +96,27 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               type="email"
             />
           </div>
+          <label className="block text-sm font-medium text-[#333942]" htmlFor="password">
+            Password
+          </label>
+          <input
+            autoComplete="current-password"
+            className="h-11 w-full rounded-md border border-[#cfd6e1] bg-white px-3 text-sm outline-none"
+            id="password"
+            name="password"
+            required
+            type="password"
+          />
+          <button
+            className="flex h-11 w-full items-center justify-center rounded-md border border-[#cfd6e1] bg-white px-4 text-sm font-semibold text-[#15171a] transition hover:bg-[#f1f4f8]"
+            formAction={signInWithPassword}
+            type="submit"
+          >
+            Sign in with password
+          </button>
           <button
             className="h-11 w-full rounded-md bg-[#0f766e] px-4 text-sm font-semibold text-white transition hover:bg-[#0b615b]"
+            formAction={signInWithMagicLink}
             type="submit"
           >
             Send magic link
