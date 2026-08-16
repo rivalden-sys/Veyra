@@ -4,14 +4,36 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { setActiveTenantCookie } from "@/lib/tenant/actions";
 
+const allowedTimezones = new Set([
+  "UTC",
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "Europe/Warsaw",
+]);
+
 export async function completeOnboarding(formData: FormData) {
   const tenantName = String(formData.get("tenantName") ?? "").trim();
-  const tenantSlug = String(formData.get("tenantSlug") ?? "").trim();
-  const tenantTimezone = String(formData.get("tenantTimezone") ?? "UTC").trim();
+  const tenantSlug = String(formData.get("tenantSlug") ?? "")
+    .trim()
+    .toLowerCase();
+  const requestedTimezone = String(
+    formData.get("tenantTimezone") ?? "UTC",
+  ).trim();
+  const tenantTimezone = allowedTimezones.has(requestedTimezone)
+    ? requestedTimezone
+    : "UTC";
 
-  if (tenantName.length < 2) {
+  if (tenantName.length < 2 || tenantName.length > 120) {
     redirect(
-      `/onboarding?error=${encodeURIComponent("Garage name must be at least 2 characters")}`,
+      `/onboarding?error=${encodeURIComponent("Workspace name must be between 2 and 120 characters")}`,
+    );
+  }
+
+  if (tenantSlug && !/^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/.test(tenantSlug)) {
+    redirect(
+      `/onboarding?error=${encodeURIComponent("Workspace slug must use 3–64 lowercase letters, numbers, or hyphens")}`,
     );
   }
 
@@ -21,7 +43,29 @@ export async function completeOnboarding(formData: FormData) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login");
+    redirect("/login?next=/onboarding");
+  }
+
+  // Idempotency guard: an authenticated user who already belongs to an active
+  // workspace should never create a second tenant by replaying onboarding.
+  const { data: existingMembership, error: membershipError } = await supabase
+    .from("tenant_memberships")
+    .select("tenant_id")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (membershipError) {
+    redirect(
+      `/onboarding?error=${encodeURIComponent("Unable to verify your workspace membership")}`,
+    );
+  }
+
+  if (existingMembership) {
+    await setActiveTenantCookie(existingMembership.tenant_id);
+    redirect("/dashboard");
   }
 
   const { data: tenantId, error } = await supabase.rpc(
@@ -29,12 +73,14 @@ export async function completeOnboarding(formData: FormData) {
     {
       tenant_name: tenantName,
       tenant_slug: tenantSlug || null,
-      tenant_timezone: tenantTimezone || "UTC",
+      tenant_timezone: tenantTimezone,
     },
   );
 
-  if (error) {
-    redirect(`/onboarding?error=${encodeURIComponent(error.message)}`);
+  if (error || !tenantId) {
+    redirect(
+      `/onboarding?error=${encodeURIComponent("Unable to create the workspace. Try a different name or slug.")}`,
+    );
   }
 
   await setActiveTenantCookie(tenantId);
