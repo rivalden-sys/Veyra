@@ -13,7 +13,11 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
+    env:
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_example
 
     steps:
       - name: Checkout
@@ -33,3 +37,6 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      - name: Production build
+        run: npm run build
