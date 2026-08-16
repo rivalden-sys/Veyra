@@ -120,6 +120,44 @@ export type Database = {
           },
         ];
       };
+      tenant_invitations: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          email: string;
+          role: Database["public"]["Enums"]["app_role"];
+          token_hash: string;
+          invited_by: string;
+          expires_at: string;
+          accepted_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          tenant_id: string;
+          email: string;
+          role: Database["public"]["Enums"]["app_role"];
+          token_hash: string;
+          invited_by: string;
+          expires_at?: string;
+          accepted_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          role?: Database["public"]["Enums"]["app_role"];
+          expires_at?: string;
+          accepted_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "tenant_invitations_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       platform_admins: {
         Row: {
           user_id: string;
@@ -166,11 +204,25 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      accept_tenant_invitation: {
+        Args: {
+          invitation_token: string;
+        };
+        Returns: string;
+      };
       create_tenant_for_current_user: {
         Args: {
           tenant_name: string;
           tenant_slug?: string | null;
           tenant_timezone?: string | null;
+        };
+        Returns: string;
+      };
+      create_tenant_invitation: {
+        Args: {
+          invited_email: string;
+          invited_role: Database["public"]["Enums"]["app_role"];
+          selected_tenant_id: string;
         };
         Returns: string;
       };
