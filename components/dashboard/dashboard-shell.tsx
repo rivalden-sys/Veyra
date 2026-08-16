@@ -1,4 +1,4 @@
-import { Gauge, LogOut } from "lucide-react";
+import { Gauge, LogOut, Settings } from "lucide-react";
 import Link from "next/link";
 import { TenantSwitcher } from "@/components/tenant/tenant-switcher";
 import type { TenantContext } from "@/lib/tenant/context";
@@ -42,11 +42,18 @@ export function DashboardShell({
         <aside className="rounded-lg border border-[#dde2ea] bg-white p-3 shadow-sm md:min-h-[calc(100vh-7rem)]">
           <nav aria-label="Dashboard" className="space-y-1">
             <Link
-              className="flex h-10 items-center gap-2 rounded-md bg-[#e7f5f2] px-3 text-sm font-semibold text-[#0f5f4d]"
+              className="flex h-10 items-center gap-2 rounded-md px-3 text-sm font-semibold text-[#333942] transition hover:bg-[#f1f4f8]"
               href="/dashboard"
             >
               <Gauge aria-hidden="true" className="h-4 w-4" />
               Dashboard
+            </Link>
+            <Link
+              className="flex h-10 items-center gap-2 rounded-md px-3 text-sm font-semibold text-[#333942] transition hover:bg-[#f1f4f8]"
+              href="/settings"
+            >
+              <Settings aria-hidden="true" className="h-4 w-4" />
+              Workspace settings
             </Link>
           </nav>
         </aside>
