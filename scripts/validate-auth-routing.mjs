@@ -54,11 +54,11 @@ assert.equal(
   "https://app.example.com",
 );
 assert.equal(
-  routing.resolveAppOrigin(undefined, "development"),
+  routing.resolveAppOrigin("", "development"),
   "http://localhost:3000",
 );
 assert.throws(
-  () => routing.resolveAppOrigin(undefined, "production"),
+  () => routing.resolveAppOrigin("", "production"),
   /NEXT_PUBLIC_SITE_URL is required/,
 );
 assert.throws(
@@ -83,7 +83,7 @@ assert.equal(
   "https://app.example.com/auth/callback?next=%2Finvite%2Fabc123%3Fsource%3Demail",
 );
 assert.equal(
-  routing.buildAuthCallbackUrl("//evil.example", undefined, "development"),
+  routing.buildAuthCallbackUrl("//evil.example", "", "development"),
   "http://localhost:3000/auth/callback?next=%2Fdashboard",
 );
 assert.equal(
