@@ -1,28 +1,22 @@
 import { Mail } from "lucide-react";
 import { redirect } from "next/navigation";
 import { signInWithGoogle, signInWithMagicLink } from "@/app/(auth)/login/actions";
+import { authErrorMessage } from "@/lib/auth/errors";
+import { safeAuthNext } from "@/lib/auth/routing";
 import { createClient } from "@/lib/supabase/server";
 
 type LoginPageProps = {
   searchParams: Promise<{
     error?: string;
     sent?: string;
-    email?: string;
     next?: string;
   }>;
 };
 
-function safeNext(next: string | undefined) {
-  if (!next || !next.startsWith("/") || next.startsWith("//")) {
-    return "/dashboard";
-  }
-
-  return next;
-}
-
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
-  const next = safeNext(params.next);
+  const next = safeAuthNext(params.next);
+  const errorMessage = authErrorMessage(params.error);
   const supabase = await createClient();
   const {
     data: { user },
@@ -44,15 +38,25 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </h1>
         </div>
 
-        {params.error ? (
-          <div className="mb-5 rounded-md border border-[#f2b8b5] bg-[#fff4f2] px-4 py-3 text-sm text-[#9f251f]">
-            {params.error}
+        {errorMessage ? (
+          <div
+            aria-atomic="true"
+            aria-live="assertive"
+            className="mb-5 rounded-md border border-[#f2b8b5] bg-[#fff4f2] px-4 py-3 text-sm text-[#9f251f]"
+            role="alert"
+          >
+            {errorMessage}
           </div>
         ) : null}
 
-        {params.sent ? (
-          <div className="mb-5 rounded-md border border-[#b8d9cc] bg-[#effaf5] px-4 py-3 text-sm text-[#0f5f4d]">
-            Magic link sent to {params.email}.
+        {params.sent === "1" ? (
+          <div
+            aria-atomic="true"
+            aria-live="polite"
+            className="mb-5 rounded-md border border-[#b8d9cc] bg-[#effaf5] px-4 py-3 text-sm text-[#0f5f4d]"
+            role="status"
+          >
+            Magic link sent. Check your email to continue.
           </div>
         ) : null}
 
