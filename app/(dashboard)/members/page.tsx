@@ -5,6 +5,7 @@ import {
   updateMemberRole,
 } from "@/app/(dashboard)/members/actions";
 import { InviteLink } from "@/components/members/invite-link";
+import { PendingSubmitButton } from "@/components/members/pending-submit-button";
 import { createClient } from "@/lib/supabase/server";
 import { getTenantContext } from "@/lib/tenant/context";
 
@@ -111,25 +112,37 @@ export default async function MembersPage({ searchParams }: MembersPageProps) {
       </div>
 
       {params.error ? (
-        <div className="rounded-md border border-[#f2b8b5] bg-[#fff4f2] px-4 py-3 text-sm text-[#9f251f]">
+        <div
+          className="rounded-md border border-[#f2b8b5] bg-[#fff4f2] px-4 py-3 text-sm text-[#9f251f]"
+          role="alert"
+        >
           {params.error}
         </div>
       ) : null}
 
       {params.saved ? (
-        <div className="rounded-md border border-[#b7dfd5] bg-[#eefaf7] px-4 py-3 text-sm text-[#0f5f4d]">
+        <div
+          className="rounded-md border border-[#b7dfd5] bg-[#eefaf7] px-4 py-3 text-sm text-[#0f5f4d]"
+          role="status"
+        >
           Member role updated.
         </div>
       ) : null}
 
       {params.revoked ? (
-        <div className="rounded-md border border-[#b7dfd5] bg-[#eefaf7] px-4 py-3 text-sm text-[#0f5f4d]">
+        <div
+          className="rounded-md border border-[#b7dfd5] bg-[#eefaf7] px-4 py-3 text-sm text-[#0f5f4d]"
+          role="status"
+        >
           Invitation revoked.
         </div>
       ) : null}
 
       {params.invited && inviteLink ? (
-        <div className="rounded-lg border border-[#b7dfd5] bg-[#eefaf7] p-5 text-sm text-[#0f5f4d]">
+        <div
+          className="rounded-lg border border-[#b7dfd5] bg-[#eefaf7] p-5 text-sm text-[#0f5f4d]"
+          role="status"
+        >
           <div className="min-w-0">
             <p className="font-semibold">Invitation created</p>
             {inviteLink.isShareable ? (
@@ -188,54 +201,66 @@ export default async function MembersPage({ searchParams }: MembersPageProps) {
               <option value="mechanic">Mechanic</option>
               <option value="customer">Customer</option>
             </select>
-            <button
+            <PendingSubmitButton
               className="h-10 rounded-md bg-[#0f766e] px-4 text-sm font-semibold text-white transition hover:bg-[#0b615b]"
-              type="submit"
+              pendingLabel="Creating..."
             >
               Create invite
-            </button>
+            </PendingSubmitButton>
           </form>
         </div>
       ) : null}
 
-      {isOwner && invitations.length > 0 ? (
+      {isOwner ? (
         <div className="overflow-hidden rounded-lg border border-[#dde2ea] bg-white shadow-sm">
           <div className="border-b border-[#dde2ea] px-5 py-4">
             <p className="text-sm font-medium text-[#333942]">
               Pending invitations
             </p>
           </div>
-          <div className="divide-y divide-[#e8ebf0]">
-            {invitations.map((invitation) => (
-              <div
-                className="flex flex-col gap-3 px-5 py-4 md:flex-row md:items-center md:justify-between"
-                key={invitation.id}
-              >
-                <div>
-                  <p className="text-sm font-semibold text-[#24282f]">
-                    {invitation.email}
-                  </p>
-                  <p className="mt-1 text-xs text-[#667085]">
-                    {invitation.role.replace("_", " ")} · expires{" "}
-                    {new Date(invitation.expires_at).toLocaleDateString()}
-                  </p>
+          {invitations.length > 0 ? (
+            <div className="divide-y divide-[#e8ebf0]">
+              {invitations.map((invitation) => (
+                <div
+                  className="flex flex-col gap-3 px-5 py-4 md:flex-row md:items-center md:justify-between"
+                  key={invitation.id}
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-[#24282f]">
+                      {invitation.email}
+                    </p>
+                    <p className="mt-1 text-xs text-[#667085]">
+                      {invitation.role.replace("_", " ")} · expires{" "}
+                      {new Date(invitation.expires_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <form action={revokeWorkspaceInvitation}>
+                    <input
+                      name="invitationId"
+                      type="hidden"
+                      value={invitation.id}
+                    />
+                    <PendingSubmitButton
+                      className="h-9 rounded-md border border-[#cfd6e1] bg-white px-3 text-sm font-semibold text-[#59616d] transition hover:bg-[#f1f4f8]"
+                      pendingLabel="Revoking..."
+                    >
+                      Revoke
+                    </PendingSubmitButton>
+                  </form>
                 </div>
-                <form action={revokeWorkspaceInvitation}>
-                  <input
-                    name="invitationId"
-                    type="hidden"
-                    value={invitation.id}
-                  />
-                  <button
-                    className="h-9 rounded-md border border-[#cfd6e1] bg-white px-3 text-sm font-semibold text-[#59616d] transition hover:bg-[#f1f4f8]"
-                    type="submit"
-                  >
-                    Revoke
-                  </button>
-                </form>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="px-5 py-8 text-center">
+              <p className="text-sm font-medium text-[#333942]">
+                No pending invitations
+              </p>
+              <p className="mt-1 text-sm text-[#667085]">
+                New workspace invitations will appear here until they are accepted
+                or revoked.
+              </p>
+            </div>
+          )}
         </div>
       ) : null}
 
@@ -246,68 +271,80 @@ export default async function MembersPage({ searchParams }: MembersPageProps) {
           </p>
         </div>
 
-        <div className="divide-y divide-[#e8ebf0]">
-          {members.map((member) => {
-            const displayName =
-              member.profile?.full_name?.trim() ||
-              member.profile?.email ||
-              member.user_id;
+        {members.length > 0 ? (
+          <div className="divide-y divide-[#e8ebf0]">
+            {members.map((member) => {
+              const displayName =
+                member.profile?.full_name?.trim() ||
+                member.profile?.email ||
+                member.user_id;
 
-            return (
-              <div
-                className="flex flex-col gap-4 px-5 py-4 md:flex-row md:items-center md:justify-between"
-                key={member.id}
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-[#24282f]">
-                    {displayName}
-                  </p>
-                  {member.profile?.email ? (
-                    <p className="mt-1 truncate text-sm text-[#667085]">
-                      {member.profile.email}
+              return (
+                <div
+                  className="flex flex-col gap-4 px-5 py-4 md:flex-row md:items-center md:justify-between"
+                  key={member.id}
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-[#24282f]">
+                      {displayName}
                     </p>
-                  ) : null}
-                  <p className="mt-1 text-xs uppercase tracking-[0.12em] text-[#89919c]">
-                    {member.status}
-                  </p>
-                </div>
+                    {member.profile?.email ? (
+                      <p className="mt-1 truncate text-sm text-[#667085]">
+                        {member.profile.email}
+                      </p>
+                    ) : null}
+                    <p className="mt-1 text-xs uppercase tracking-[0.12em] text-[#89919c]">
+                      {member.status}
+                    </p>
+                  </div>
 
-                {isOwner ? (
-                  <form
-                    action={updateMemberRole}
-                    className="flex items-center gap-2"
-                  >
-                    <input
-                      name="membershipId"
-                      type="hidden"
-                      value={member.id}
-                    />
-                    <select
-                      className="h-10 rounded-md border border-[#cfd6e1] bg-white px-3 text-sm outline-none"
-                      defaultValue={member.role}
-                      name="role"
+                  {isOwner ? (
+                    <form
+                      action={updateMemberRole}
+                      className="flex items-center gap-2"
                     >
-                      <option value="owner">Owner</option>
-                      <option value="service_advisor">Service advisor</option>
-                      <option value="mechanic">Mechanic</option>
-                      <option value="customer">Customer</option>
-                    </select>
-                    <button
-                      className="h-10 rounded-md border border-[#cfd6e1] bg-white px-3 text-sm font-semibold text-[#333942] transition hover:bg-[#f1f4f8]"
-                      type="submit"
-                    >
-                      Save
-                    </button>
-                  </form>
-                ) : (
-                  <span className="rounded-full bg-[#f1f4f8] px-3 py-1 text-xs font-semibold text-[#59616d]">
-                    {member.role.replace("_", " ")}
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                      <input
+                        name="membershipId"
+                        type="hidden"
+                        value={member.id}
+                      />
+                      <select
+                        className="h-10 rounded-md border border-[#cfd6e1] bg-white px-3 text-sm outline-none"
+                        defaultValue={member.role}
+                        name="role"
+                      >
+                        <option value="owner">Owner</option>
+                        <option value="service_advisor">Service advisor</option>
+                        <option value="mechanic">Mechanic</option>
+                        <option value="customer">Customer</option>
+                      </select>
+                      <PendingSubmitButton
+                        className="h-10 rounded-md border border-[#cfd6e1] bg-white px-3 text-sm font-semibold text-[#333942] transition hover:bg-[#f1f4f8]"
+                        pendingLabel="Saving..."
+                      >
+                        Save
+                      </PendingSubmitButton>
+                    </form>
+                  ) : (
+                    <span className="rounded-full bg-[#f1f4f8] px-3 py-1 text-xs font-semibold text-[#59616d]">
+                      {member.role.replace("_", " ")}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="px-5 py-8 text-center">
+            <p className="text-sm font-medium text-[#333942]">
+              No workspace members found
+            </p>
+            <p className="mt-1 text-sm text-[#667085]">
+              Membership data is currently empty. If this persists, verify the
+              workspace membership state.
+            </p>
+          </div>
+        )}
       </div>
     </section>
   );
