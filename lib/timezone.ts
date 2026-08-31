@@ -63,3 +63,22 @@ export function getSupportedTimeZones(currentTimeZone?: string): string[] {
 
   return [...timeZones].sort((left, right) => left.localeCompare(right));
 }
+
+export function groupTimeZones(
+  timeZones: string[],
+): Array<[group: string, timeZones: string[]]> {
+  const groups = new Map<string, string[]>();
+
+  for (const timeZone of timeZones) {
+    const group = timeZone === "UTC" ? "General" : timeZone.split("/")[0];
+    const existing = groups.get(group) ?? [];
+    existing.push(timeZone);
+    groups.set(group, existing);
+  }
+
+  return [...groups.entries()].sort(([left], [right]) => {
+    if (left === "General") return -1;
+    if (right === "General") return 1;
+    return left.localeCompare(right);
+  });
+}
