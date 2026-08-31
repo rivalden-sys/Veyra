@@ -1,5 +1,4 @@
 import { MailPlus, Users } from "lucide-react";
-import { headers } from "next/headers";
 import {
   createWorkspaceInvitation,
   revokeWorkspaceInvitation,
@@ -38,33 +37,23 @@ type InvitationRow = {
   accepted_at: string | null;
 };
 
-async function buildInviteUrl(token: string) {
+type InviteLinkValue = {
+  value: string;
+  isShareable: boolean;
+};
+
+function buildInviteLink(token: string): InviteLinkValue {
   const invitePath = `/invite/${encodeURIComponent(token)}`;
   const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
 
-  if (configuredSiteUrl && URL.canParse(configuredSiteUrl)) {
-    return new URL(invitePath, configuredSiteUrl).toString();
+  if (!configuredSiteUrl || !URL.canParse(configuredSiteUrl)) {
+    return { value: invitePath, isShareable: false };
   }
 
-  const requestHeaders = await headers();
-  const forwardedHost = requestHeaders
-    .get("x-forwarded-host")
-    ?.split(",")[0]
-    ?.trim();
-  const host = forwardedHost || requestHeaders.get("host");
-
-  if (!host) {
-    return invitePath;
-  }
-
-  const forwardedProtocol = requestHeaders
-    .get("x-forwarded-proto")
-    ?.split(",")[0]
-    ?.trim();
-  const protocol =
-    forwardedProtocol || (host.startsWith("localhost") ? "http" : "https");
-
-  return `${protocol}://${host}${invitePath}`;
+  return {
+    value: new URL(invitePath, configuredSiteUrl).toString(),
+    isShareable: true,
+  };
 }
 
 export default async function MembersPage({ searchParams }: MembersPageProps) {
@@ -100,7 +89,7 @@ export default async function MembersPage({ searchParams }: MembersPageProps) {
 
   const members = (data ?? []) as unknown as MemberRow[];
   const invitations = (invitationData ?? []) as unknown as InvitationRow[];
-  const inviteUrl = params.token ? await buildInviteUrl(params.token) : null;
+  const inviteLink = params.token ? buildInviteLink(params.token) : null;
 
   return (
     <section className="space-y-6">
@@ -139,15 +128,30 @@ export default async function MembersPage({ searchParams }: MembersPageProps) {
         </div>
       ) : null}
 
-      {params.invited && inviteUrl ? (
+      {params.invited && inviteLink ? (
         <div className="rounded-lg border border-[#b7dfd5] bg-[#eefaf7] p-5 text-sm text-[#0f5f4d]">
           <div className="min-w-0">
             <p className="font-semibold">Invitation created</p>
-            <p className="mt-1 text-[#356a61]">
-              Share this link with the invited person. It is shown only after
-              creation; the database stores only a SHA-256 hash of the token.
-            </p>
-            <InviteLink value={inviteUrl} />
+            {inviteLink.isShareable ? (
+              <>
+                <p className="mt-1 text-[#356a61]">
+                  Share this link with the invited person. It is shown only after
+                  creation; the database stores only a SHA-256 hash of the token.
+                </p>
+                <InviteLink value={inviteLink.value} />
+              </>
+            ) : (
+              <div className="mt-2">
+                <p className="text-[#8a5a16]">
+                  A shareable URL could not be generated because
+                  NEXT_PUBLIC_SITE_URL is missing or invalid. Configure the
+                  canonical site URL before sharing this invitation externally.
+                </p>
+                <code className="mt-3 block overflow-x-auto rounded-md bg-white px-3 py-2 text-xs text-[#24282f]">
+                  {inviteLink.value}
+                </code>
+              </div>
+            )}
           </div>
         </div>
       ) : null}
