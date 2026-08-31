@@ -1,9 +1,11 @@
-import { Copy, MailPlus, Users } from "lucide-react";
+import { MailPlus, Users } from "lucide-react";
+import { headers } from "next/headers";
 import {
   createWorkspaceInvitation,
   revokeWorkspaceInvitation,
   updateMemberRole,
 } from "@/app/(dashboard)/members/actions";
+import { InviteLink } from "@/components/members/invite-link";
 import { createClient } from "@/lib/supabase/server";
 import { getTenantContext } from "@/lib/tenant/context";
 
@@ -35,6 +37,35 @@ type InvitationRow = {
   expires_at: string;
   accepted_at: string | null;
 };
+
+async function buildInviteUrl(token: string) {
+  const invitePath = `/invite/${encodeURIComponent(token)}`;
+  const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+
+  if (configuredSiteUrl && URL.canParse(configuredSiteUrl)) {
+    return new URL(invitePath, configuredSiteUrl).toString();
+  }
+
+  const requestHeaders = await headers();
+  const forwardedHost = requestHeaders
+    .get("x-forwarded-host")
+    ?.split(",")[0]
+    ?.trim();
+  const host = forwardedHost || requestHeaders.get("host");
+
+  if (!host) {
+    return invitePath;
+  }
+
+  const forwardedProtocol = requestHeaders
+    .get("x-forwarded-proto")
+    ?.split(",")[0]
+    ?.trim();
+  const protocol =
+    forwardedProtocol || (host.startsWith("localhost") ? "http" : "https");
+
+  return `${protocol}://${host}${invitePath}`;
+}
 
 export default async function MembersPage({ searchParams }: MembersPageProps) {
   const params = await searchParams;
@@ -69,9 +100,7 @@ export default async function MembersPage({ searchParams }: MembersPageProps) {
 
   const members = (data ?? []) as unknown as MemberRow[];
   const invitations = (invitationData ?? []) as unknown as InvitationRow[];
-  const invitePath = params.token
-    ? `/invite/${encodeURIComponent(params.token)}`
-    : null;
+  const inviteUrl = params.token ? await buildInviteUrl(params.token) : null;
 
   return (
     <section className="space-y-6">
@@ -110,20 +139,15 @@ export default async function MembersPage({ searchParams }: MembersPageProps) {
         </div>
       ) : null}
 
-      {params.invited && invitePath ? (
+      {params.invited && inviteUrl ? (
         <div className="rounded-lg border border-[#b7dfd5] bg-[#eefaf7] p-5 text-sm text-[#0f5f4d]">
-          <div className="flex items-start gap-3">
-            <Copy aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
-            <div className="min-w-0">
-              <p className="font-semibold">Invitation created</p>
-              <p className="mt-1 text-[#356a61]">
-                Share this path with the invited person. It is shown only after
-                creation; the database stores only a SHA-256 hash of the token.
-              </p>
-              <code className="mt-3 block overflow-x-auto rounded-md bg-white px-3 py-2 text-xs text-[#24282f]">
-                {invitePath}
-              </code>
-            </div>
+          <div className="min-w-0">
+            <p className="font-semibold">Invitation created</p>
+            <p className="mt-1 text-[#356a61]">
+              Share this link with the invited person. It is shown only after
+              creation; the database stores only a SHA-256 hash of the token.
+            </p>
+            <InviteLink value={inviteUrl} />
           </div>
         </div>
       ) : null}
@@ -139,7 +163,10 @@ export default async function MembersPage({ searchParams }: MembersPageProps) {
               </p>
             </div>
           </div>
-          <form action={createWorkspaceInvitation} className="grid gap-3 md:grid-cols-[1fr_190px_auto]">
+          <form
+            action={createWorkspaceInvitation}
+            className="grid gap-3 md:grid-cols-[1fr_190px_auto]"
+          >
             <input
               className="h-10 rounded-md border border-[#cfd6e1] bg-white px-3 text-sm outline-none"
               name="email"
@@ -170,7 +197,9 @@ export default async function MembersPage({ searchParams }: MembersPageProps) {
       {isOwner && invitations.length > 0 ? (
         <div className="overflow-hidden rounded-lg border border-[#dde2ea] bg-white shadow-sm">
           <div className="border-b border-[#dde2ea] px-5 py-4">
-            <p className="text-sm font-medium text-[#333942]">Pending invitations</p>
+            <p className="text-sm font-medium text-[#333942]">
+              Pending invitations
+            </p>
           </div>
           <div className="divide-y divide-[#e8ebf0]">
             {invitations.map((invitation) => (
@@ -183,11 +212,16 @@ export default async function MembersPage({ searchParams }: MembersPageProps) {
                     {invitation.email}
                   </p>
                   <p className="mt-1 text-xs text-[#667085]">
-                    {invitation.role.replace("_", " ")} · expires {new Date(invitation.expires_at).toLocaleDateString()}
+                    {invitation.role.replace("_", " ")} · expires{" "}
+                    {new Date(invitation.expires_at).toLocaleDateString()}
                   </p>
                 </div>
                 <form action={revokeWorkspaceInvitation}>
-                  <input name="invitationId" type="hidden" value={invitation.id} />
+                  <input
+                    name="invitationId"
+                    type="hidden"
+                    value={invitation.id}
+                  />
                   <button
                     className="h-9 rounded-md border border-[#cfd6e1] bg-white px-3 text-sm font-semibold text-[#59616d] transition hover:bg-[#f1f4f8]"
                     type="submit"
@@ -235,8 +269,15 @@ export default async function MembersPage({ searchParams }: MembersPageProps) {
                 </div>
 
                 {isOwner ? (
-                  <form action={updateMemberRole} className="flex items-center gap-2">
-                    <input name="membershipId" type="hidden" value={member.id} />
+                  <form
+                    action={updateMemberRole}
+                    className="flex items-center gap-2"
+                  >
+                    <input
+                      name="membershipId"
+                      type="hidden"
+                      value={member.id}
+                    />
                     <select
                       className="h-10 rounded-md border border-[#cfd6e1] bg-white px-3 text-sm outline-none"
                       defaultValue={member.role}
