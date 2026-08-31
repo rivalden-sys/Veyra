@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { completeOnboarding } from "@/app/onboarding/actions";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth/require-user";
+import { getSupportedTimeZones, groupTimeZones } from "@/lib/timezone";
 
 type OnboardingPageProps = {
   searchParams: Promise<{
@@ -16,6 +17,7 @@ export default async function OnboardingPage({
   const params = await searchParams;
   const user = await requireUser();
   const supabase = await createClient();
+  const timeZoneGroups = groupTimeZones(getSupportedTimeZones("UTC"));
 
   const { data: membership } = await supabase
     .from("tenant_memberships")
@@ -48,7 +50,10 @@ export default async function OnboardingPage({
           </div>
 
           {params.error ? (
-            <div className="mb-5 rounded-md border border-[#f2b8b5] bg-[#fff4f2] px-4 py-3 text-sm text-[#9f251f]">
+            <div
+              className="mb-5 rounded-md border border-[#f2b8b5] bg-[#fff4f2] px-4 py-3 text-sm text-[#9f251f]"
+              role="alert"
+            >
               {params.error}
             </div>
           ) : null}
@@ -101,13 +106,20 @@ export default async function OnboardingPage({
                 id="tenantTimezone"
                 name="tenantTimezone"
               >
-                <option value="UTC">UTC</option>
-                <option value="America/New_York">America/New_York</option>
-                <option value="America/Chicago">America/Chicago</option>
-                <option value="America/Denver">America/Denver</option>
-                <option value="America/Los_Angeles">America/Los_Angeles</option>
-                <option value="Europe/Warsaw">Europe/Warsaw</option>
+                {timeZoneGroups.map(([group, timeZones]) => (
+                  <optgroup key={group} label={group}>
+                    {timeZones.map((timeZone) => (
+                      <option key={timeZone} value={timeZone}>
+                        {timeZone}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
               </select>
+              <p className="mt-2 text-xs text-[#7b8490]">
+                Timezones use canonical IANA identifiers and are validated again
+                on the server before the workspace is created.
+              </p>
             </div>
 
             <button
