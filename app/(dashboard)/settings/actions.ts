@@ -4,15 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getTenantContext } from "@/lib/tenant/context";
-
-const allowedTimezones = new Set([
-  "UTC",
-  "America/New_York",
-  "America/Chicago",
-  "America/Denver",
-  "America/Los_Angeles",
-  "Europe/Warsaw",
-]);
+import { canonicalizeTimeZone } from "@/lib/timezone";
 
 export async function updateWorkspaceSettings(formData: FormData) {
   const context = await getTenantContext();
@@ -22,7 +14,8 @@ export async function updateWorkspaceSettings(formData: FormData) {
   }
 
   const name = String(formData.get("name") ?? "").trim();
-  const timezone = String(formData.get("timezone") ?? "UTC").trim();
+  const requestedTimeZone = String(formData.get("timezone") ?? "UTC").trim();
+  const timezone = canonicalizeTimeZone(requestedTimeZone);
 
   if (name.length < 2 || name.length > 120) {
     redirect(
@@ -30,7 +23,7 @@ export async function updateWorkspaceSettings(formData: FormData) {
     );
   }
 
-  if (!allowedTimezones.has(timezone)) {
+  if (!timezone) {
     redirect("/settings?error=Unsupported%20timezone");
   }
 
