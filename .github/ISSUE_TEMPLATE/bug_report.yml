@@ -1,0 +1,51 @@
+name: Bug report
+description: Report a reproducible defect in Veyra.
+title: "[Bug]: "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Do not include secrets, real credentials, customer data, or exploitable vulnerability details. Use the repository Security policy for sensitive reports.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What happened, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Provide the smallest reliable steps to reproduce the issue.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include relevant Node.js, browser, Supabase CLI, deployment, or database context without secrets.
+    validations:
+      required: false
+  - type: dropdown
+    id: boundary
+    attributes:
+      label: Security or tenant boundary affected?
+      options:
+        - No / unknown
+        - Authentication or session
+        - Authorization or roles
+        - Tenant isolation / RLS
+        - Invitations / tokens
+        - Database migration / SECURITY DEFINER
+        - Redirect / cookie / configuration
+    validations:
+      required: true
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I removed secrets, credentials, and private user/customer data from this report.
+          required: true
