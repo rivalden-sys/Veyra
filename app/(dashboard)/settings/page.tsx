@@ -1,7 +1,11 @@
 import { Settings } from "lucide-react";
 import { updateWorkspaceSettings } from "@/app/(dashboard)/settings/actions";
 import { getTenantContext } from "@/lib/tenant/context";
-import { canonicalizeTimeZone, getSupportedTimeZones } from "@/lib/timezone";
+import {
+  canonicalizeTimeZone,
+  getSupportedTimeZones,
+  groupTimeZones,
+} from "@/lib/timezone";
 
 type SettingsPageProps = {
   searchParams: Promise<{
@@ -9,23 +13,6 @@ type SettingsPageProps = {
     saved?: string;
   }>;
 };
-
-function groupTimeZones(timeZones: string[]) {
-  const groups = new Map<string, string[]>();
-
-  for (const timeZone of timeZones) {
-    const group = timeZone === "UTC" ? "General" : timeZone.split("/")[0];
-    const existing = groups.get(group) ?? [];
-    existing.push(timeZone);
-    groups.set(group, existing);
-  }
-
-  return [...groups.entries()].sort(([left], [right]) => {
-    if (left === "General") return -1;
-    if (right === "General") return 1;
-    return left.localeCompare(right);
-  });
-}
 
 export default async function SettingsPage({ searchParams }: SettingsPageProps) {
   const params = await searchParams;
