@@ -5,11 +5,15 @@ import { createClient } from "@/lib/supabase/server";
 import { ACTIVE_TENANT_COOKIE } from "@/lib/tenant/context";
 
 export async function POST() {
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signOut();
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.signOut();
 
-  if (error) {
-    logAuthFailure("sign_out", error);
+    if (error) {
+      logAuthFailure("sign_out", error);
+    }
+  } catch (error) {
+    logAuthFailure("sign_out_unexpected", error);
   }
 
   let response: NextResponse;
