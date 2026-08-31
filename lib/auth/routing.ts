@@ -59,7 +59,7 @@ export function resolveAppOrigin(
     throw new Error("NEXT_PUBLIC_SITE_URL must be a valid absolute URL");
   }
 
-  if (!(["http:", "https:"] as const).includes(configuredUrl.protocol as "http:" | "https:")) {
+  if (configuredUrl.protocol !== "http:" && configuredUrl.protocol !== "https:") {
     throw new Error("NEXT_PUBLIC_SITE_URL must use http or https");
   }
 
