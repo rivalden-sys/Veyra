@@ -2,18 +2,23 @@
 
 Veyra uses two CI validation layers:
 
-1. Application quality checks: lint, TypeScript typechecking, timezone runtime validation, and a production Next.js build.
+1. Application and repository quality checks: migration-ledger integrity, timezone runtime validation, lint, TypeScript typechecking, and a production Next.js build.
 2. Database security checks: a fresh local Supabase Postgres instance replays every migration and runs the pgTAP suite in `supabase/tests/database`.
 
-## Application checks
+## Application and repository checks
 
 ```bash
 npm ci
+node scripts/validate-migrations.mjs
+node scripts/validate-timezones.mjs
 npm run lint
 npm run typecheck
-node scripts/validate-timezones.mjs
 npm run build
 ```
+
+`validate-migrations.mjs` verifies that migration versions are unique, byte-identical migration files do not exist under different versions, and the migration manifest in `README.md` exactly matches `supabase/migrations`.
+
+Migration workflow and drift-recovery rules are documented in [`MIGRATIONS.md`](MIGRATIONS.md).
 
 ## Database security checks
 
@@ -58,4 +63,4 @@ All test data is created inside a transaction and rolled back at the end of the 
 
 ## CI
 
-GitHub Actions pins the Supabase CLI version and starts a fresh database for every `database-security` job. No remote Supabase project credentials or production data are used by these tests.
+GitHub Actions runs migration-ledger validation before the application checks and pins the Supabase CLI version for the database job. The `database-security` job starts a fresh database for every run, replays the full source-controlled migration chain, and executes the pgTAP suite. No remote Supabase project credentials or production data are used by these tests.

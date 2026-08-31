@@ -32,6 +32,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate migration ledger
+        run: node scripts/validate-migrations.mjs
+
       - name: Validate timezone runtime
         run: node scripts/validate-timezones.mjs
 
