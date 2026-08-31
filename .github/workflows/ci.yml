@@ -35,6 +35,9 @@ jobs:
       - name: Validate migration ledger
         run: node scripts/validate-migrations.mjs
 
+      - name: Validate auth routing
+        run: node scripts/validate-auth-routing.mjs
+
       - name: Validate timezone runtime
         run: node scripts/validate-timezones.mjs
 
