@@ -1,0 +1,33 @@
+name: Feature request
+description: Propose a focused product or foundation improvement.
+title: "[Feature]: "
+labels: []
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: Describe the concrete problem this proposal should solve.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed direction
+      description: Describe the smallest useful solution. Avoid broad framework expansion without a current use case.
+    validations:
+      required: true
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: Security, tenant, database, or migration implications
+      description: Note any expected effect on auth, RLS, roles, tenant isolation, migrations, redirects, cookies, or privileged configuration.
+    validations:
+      required: false
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: This request keeps Veyra focused as a compact SaaS foundation rather than a general framework.
+          required: true

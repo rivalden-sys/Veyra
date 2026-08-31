@@ -3,8 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - rename-to-veyra-foundation
-      - chore/oss-v0.1.0
+      - main
   pull_request:
 
 permissions:
