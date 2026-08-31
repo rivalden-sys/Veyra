@@ -1,6 +1,7 @@
 import { Settings } from "lucide-react";
 import { updateWorkspaceSettings } from "@/app/(dashboard)/settings/actions";
 import { getTenantContext } from "@/lib/tenant/context";
+import { canonicalizeTimeZone, getSupportedTimeZones } from "@/lib/timezone";
 
 type SettingsPageProps = {
   searchParams: Promise<{
@@ -9,10 +10,34 @@ type SettingsPageProps = {
   }>;
 };
 
+function groupTimeZones(timeZones: string[]) {
+  const groups = new Map<string, string[]>();
+
+  for (const timeZone of timeZones) {
+    const group = timeZone === "UTC" ? "General" : timeZone.split("/")[0];
+    const existing = groups.get(group) ?? [];
+    existing.push(timeZone);
+    groups.set(group, existing);
+  }
+
+  return [...groups.entries()].sort(([left], [right]) => {
+    if (left === "General") return -1;
+    if (right === "General") return 1;
+    return left.localeCompare(right);
+  });
+}
+
 export default async function SettingsPage({ searchParams }: SettingsPageProps) {
   const params = await searchParams;
   const context = await getTenantContext();
   const isOwner = context.activeTenant.role === "owner";
+  const storedTimeZone = context.activeTenant.tenantTimezone;
+  const canonicalTimeZone = canonicalizeTimeZone(storedTimeZone);
+  const selectedTimeZone = canonicalTimeZone ?? "UTC";
+  const timeZoneGroups = groupTimeZones(
+    getSupportedTimeZones(selectedTimeZone),
+  );
+  const hasInvalidStoredTimeZone = canonicalTimeZone === null;
 
   return (
     <section className="space-y-6">
@@ -34,14 +59,31 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
       </div>
 
       {params.error ? (
-        <div className="rounded-md border border-[#f2b8b5] bg-[#fff4f2] px-4 py-3 text-sm text-[#9f251f]">
+        <div
+          className="rounded-md border border-[#f2b8b5] bg-[#fff4f2] px-4 py-3 text-sm text-[#9f251f]"
+          role="alert"
+        >
           {params.error}
         </div>
       ) : null}
 
       {params.saved ? (
-        <div className="rounded-md border border-[#b7dfd5] bg-[#eefaf7] px-4 py-3 text-sm text-[#0f5f4d]">
+        <div
+          className="rounded-md border border-[#b7dfd5] bg-[#eefaf7] px-4 py-3 text-sm text-[#0f5f4d]"
+          role="status"
+        >
           Workspace settings saved.
+        </div>
+      ) : null}
+
+      {hasInvalidStoredTimeZone ? (
+        <div
+          className="rounded-md border border-[#e7cf98] bg-[#fff9e8] px-4 py-3 text-sm text-[#765416]"
+          role="alert"
+        >
+          The stored timezone <strong>{storedTimeZone}</strong> is not a valid
+          IANA timezone. UTC is selected as a safe fallback. Saving the form will
+          replace the legacy value.
         </div>
       ) : null}
 
@@ -86,18 +128,25 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
             </label>
             <select
               className="h-11 w-full rounded-md border border-[#cfd6e1] bg-white px-3 text-sm outline-none disabled:bg-[#f4f6f8] disabled:text-[#7b8490]"
-              defaultValue={context.activeTenant.tenantTimezone}
+              defaultValue={selectedTimeZone}
               disabled={!isOwner}
               id="timezone"
               name="timezone"
             >
-              <option value="UTC">UTC</option>
-              <option value="America/New_York">America/New_York</option>
-              <option value="America/Chicago">America/Chicago</option>
-              <option value="America/Denver">America/Denver</option>
-              <option value="America/Los_Angeles">America/Los_Angeles</option>
-              <option value="Europe/Warsaw">Europe/Warsaw</option>
+              {timeZoneGroups.map(([group, timeZones]) => (
+                <optgroup key={group} label={group}>
+                  {timeZones.map((timeZone) => (
+                    <option key={timeZone} value={timeZone}>
+                      {timeZone}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
             </select>
+            <p className="mt-2 text-xs text-[#7b8490]">
+              Timezones use canonical IANA identifiers and are validated again
+              on the server before saving.
+            </p>
           </div>
 
           {isOwner ? (
