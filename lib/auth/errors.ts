@@ -1,5 +1,6 @@
 const AUTH_ERROR_MESSAGES = {
   auth_code_missing: "The sign-in link is incomplete. Start the sign-in process again.",
+  auth_configuration_error: "Sign-in is temporarily unavailable. Please try again later.",
   auth_exchange_failed: "We couldn't complete sign-in. Please try again.",
   email_required: "Enter your email address.",
   google_redirect_unavailable: "Google sign-in is temporarily unavailable. Please try again.",
