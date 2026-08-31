@@ -3,27 +3,17 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { setActiveTenantCookie } from "@/lib/tenant/actions";
-
-const allowedTimezones = new Set([
-  "UTC",
-  "America/New_York",
-  "America/Chicago",
-  "America/Denver",
-  "America/Los_Angeles",
-  "Europe/Warsaw",
-]);
+import { canonicalizeTimeZone } from "@/lib/timezone";
 
 export async function completeOnboarding(formData: FormData) {
   const tenantName = String(formData.get("tenantName") ?? "").trim();
   const tenantSlug = String(formData.get("tenantSlug") ?? "")
     .trim()
     .toLowerCase();
-  const requestedTimezone = String(
-    formData.get("tenantTimezone") ?? "UTC",
-  ).trim();
-  const tenantTimezone = allowedTimezones.has(requestedTimezone)
-    ? requestedTimezone
-    : "UTC";
+  const timezoneEntry = formData.get("tenantTimezone");
+  const requestedTimezone =
+    timezoneEntry === null ? "UTC" : String(timezoneEntry).trim();
+  const tenantTimezone = canonicalizeTimeZone(requestedTimezone);
 
   if (tenantName.length < 2 || tenantName.length > 120) {
     redirect(
@@ -34,6 +24,12 @@ export async function completeOnboarding(formData: FormData) {
   if (tenantSlug && !/^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/.test(tenantSlug)) {
     redirect(
       `/onboarding?error=${encodeURIComponent("Workspace slug must use 3–64 lowercase letters, numbers, or hyphens")}`,
+    );
+  }
+
+  if (!tenantTimezone) {
+    redirect(
+      `/onboarding?error=${encodeURIComponent("Unsupported timezone")}`,
     );
   }
 
