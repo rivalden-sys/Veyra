@@ -1,36 +1,47 @@
 import { NextResponse, type NextRequest } from "next/server";
+import type { AuthErrorCode } from "@/lib/auth/errors";
+import { logAuthFailure } from "@/lib/auth/errors";
+import { buildAppUrl, safeAuthNext } from "@/lib/auth/routing";
 import { createClient } from "@/lib/supabase/server";
 
-function safeNext(next: string | null) {
-  if (!next || !next.startsWith("/") || next.startsWith("//")) {
-    return "/dashboard";
-  }
+function loginErrorPath(error: AuthErrorCode, next: string): string {
+  const params = new URLSearchParams({ error, next });
+  return `/login?${params.toString()}`;
+}
 
-  return next;
+function canonicalRedirect(path: string): NextResponse {
+  try {
+    return NextResponse.redirect(buildAppUrl(path));
+  } catch (error) {
+    logAuthFailure("canonical_origin_configuration", error);
+    return NextResponse.json(
+      { error: "Authentication is temporarily unavailable." },
+      { status: 500 },
+    );
+  }
 }
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
-  const next = safeNext(requestUrl.searchParams.get("next"));
+  const next = safeAuthNext(requestUrl.searchParams.get("next"));
 
   if (!code) {
-    return NextResponse.redirect(
-      new URL("/login?error=Missing%20auth%20code", requestUrl.origin),
-    );
+    return canonicalRedirect(loginErrorPath("auth_code_missing", next));
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
 
-  if (error) {
-    return NextResponse.redirect(
-      new URL(
-        `/login?error=${encodeURIComponent(error.message)}`,
-        requestUrl.origin,
-      ),
-    );
+    if (error) {
+      logAuthFailure("code_exchange", error);
+      return canonicalRedirect(loginErrorPath("auth_exchange_failed", next));
+    }
+  } catch (error) {
+    logAuthFailure("code_exchange_unexpected", error);
+    return canonicalRedirect(loginErrorPath("auth_exchange_failed", next));
   }
 
-  return NextResponse.redirect(new URL(next, requestUrl.origin));
+  return canonicalRedirect(next);
 }
