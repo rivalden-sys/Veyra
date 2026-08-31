@@ -109,11 +109,17 @@ Never commit real credentials.
 
 Current migration sequence:
 
+<!-- migration-ledger:start -->
 ```text
-20260530120000_foundation_types.sql
-20260530121000_core_multi_tenant_schema.sql
-20260530122000_rls_policies.sql
+20260816101941_foundation_types.sql
+20260816102007_core_multi_tenant_schema.sql
+20260816102020_rls_policies.sql
+20260816102039_workspace_invitations.sql
+20260831115900_fix_workspace_invitation_crypto_schema.sql
 ```
+<!-- migration-ledger:end -->
+
+See [`docs/MIGRATIONS.md`](docs/MIGRATIONS.md) for migration and drift-handling rules.
 
 6. Enable the authentication providers you want in Supabase Auth.
 
@@ -135,12 +141,14 @@ Open `http://localhost:3000`.
 ## Quality checks
 
 ```bash
+node scripts/validate-timezones.mjs
+node scripts/validate-migrations.mjs
 npm run lint
 npm run typecheck
 npm run build
 ```
 
-The CI workflow runs static quality checks on pushes and pull requests.
+The CI workflow runs static quality checks on pushes and pull requests. Database security validation is documented in [`docs/TESTING.md`](docs/TESTING.md).
 
 ## Multi-tenant security model
 
