@@ -1,65 +1,61 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import type { AuthErrorCode } from "@/lib/auth/errors";
+import { logAuthFailure } from "@/lib/auth/errors";
+import { buildAuthCallbackUrl, safeAuthNext } from "@/lib/auth/routing";
 import { createClient } from "@/lib/supabase/server";
 
-function safeNext(value: FormDataEntryValue | null) {
-  const next = typeof value === "string" ? value : "/dashboard";
-
-  if (!next.startsWith("/") || next.startsWith("//")) {
-    return "/dashboard";
-  }
-
-  return next;
+function loginErrorPath(error: AuthErrorCode, next: string): string {
+  const params = new URLSearchParams({ error, next });
+  return `/login?${params.toString()}`;
 }
 
-async function callbackUrl(next: string) {
-  const headerStore = await headers();
-  const origin =
-    headerStore.get("origin") ??
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    "http://localhost:3000";
-
-  return `${origin}/auth/callback?next=${encodeURIComponent(next)}`;
+function callbackUrl(next: string): string {
+  try {
+    return buildAuthCallbackUrl(next);
+  } catch (error) {
+    logAuthFailure("callback_url_configuration", error);
+    redirect(loginErrorPath("auth_configuration_error", next));
+  }
 }
 
 export async function signInWithMagicLink(formData: FormData) {
   const email = String(formData.get("email") ?? "")
     .trim()
     .toLowerCase();
-  const next = safeNext(formData.get("next"));
+  const next = safeAuthNext(formData.get("next"));
 
   if (!email) {
-    redirect(`/login?error=${encodeURIComponent("Email is required")}`);
+    redirect(loginErrorPath("email_required", next));
   }
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: await callbackUrl(next),
+      emailRedirectTo: callbackUrl(next),
       shouldCreateUser: true,
     },
   });
 
   if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}`);
+    logAuthFailure("magic_link_send", error);
+    redirect(loginErrorPath("magic_link_failed", next));
   }
 
-  redirect(
-    `/login?sent=1&email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}`,
-  );
+  const successParams = new URLSearchParams({ sent: "1", next });
+  redirect(`/login?${successParams.toString()}`);
 }
 
 export async function signInWithGoogle(formData: FormData) {
-  const next = safeNext(formData.get("next"));
+  const next = safeAuthNext(formData.get("next"));
   const supabase = await createClient();
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: await callbackUrl(next),
+      redirectTo: callbackUrl(next),
       queryParams: {
         access_type: "offline",
         prompt: "consent",
@@ -68,13 +64,13 @@ export async function signInWithGoogle(formData: FormData) {
   });
 
   if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}`);
+    logAuthFailure("google_sign_in", error);
+    redirect(loginErrorPath("google_sign_in_failed", next));
   }
 
   if (!data.url) {
-    redirect(
-      `/login?error=${encodeURIComponent("Google sign-in did not return a redirect URL")}`,
-    );
+    logAuthFailure("google_redirect_missing", new Error("OAuth redirect URL missing"));
+    redirect(loginErrorPath("google_redirect_unavailable", next));
   }
 
   redirect(data.url);
