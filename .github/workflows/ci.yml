@@ -43,3 +43,25 @@ jobs:
 
       - name: Production build
         run: npm run build
+
+  database-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.116.0
+
+      - name: Initialize local Supabase config
+        run: supabase init
+
+      - name: Start fresh local database
+        run: supabase db start
+
+      - name: Run pgTAP security suite
+        run: supabase test db
