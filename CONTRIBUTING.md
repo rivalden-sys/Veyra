@@ -1,61 +1,53 @@
 # Contributing to Veyra
 
-Veyra is intentionally small and architecture-focused. Contributions should preserve that property.
+Veyra is a compact, security-sensitive multi-tenant SaaS foundation. Contributions should preserve tenant isolation, authentication boundaries, migration reproducibility, and a small understandable codebase.
 
-## Before you start
+## Before opening a pull request
 
-For bug fixes and documentation corrections, a pull request is usually sufficient.
-
-For larger changes, open an issue first so the intended behavior and tenant/security implications can be discussed before implementation.
-
-## Development setup
-
-1. Fork or clone the repository.
-2. Install dependencies with `npm install`.
-3. Copy `.env.example` to `.env.local`.
-4. Configure a Supabase project.
-5. Apply migrations in `supabase/migrations` in timestamp order.
-6. Run `npm run dev`.
-
-## Required checks
-
-Before opening a pull request, run:
+1. Start from the current `main` branch.
+2. Keep the change focused. Product behavior, database migrations, and security-boundary changes should not be mixed unless they are inseparable.
+3. Do not include secrets, production credentials, private customer data, or plaintext invitation tokens.
+4. For database changes, add a new forward migration. Never rewrite an already-applied migration.
+5. Run the same validation gates used by CI:
 
 ```bash
+npm ci
+node scripts/validate-migrations.mjs
+node scripts/validate-auth-routing.mjs
+node scripts/validate-timezones.mjs
 npm run lint
 npm run typecheck
+npm run build
 ```
 
-Run `npm run build` when your local environment is configured with the required public Supabase variables.
+For database-sensitive changes, also run:
+
+```bash
+supabase init
+supabase db start
+supabase test db
+```
+
+See [`docs/TESTING.md`](docs/TESTING.md) and [`docs/MIGRATIONS.md`](docs/MIGRATIONS.md) for details.
 
 ## Pull request expectations
 
-A good pull request should:
-- solve one clear problem
-- explain user-visible and architectural impact
-- include any required database migration
-- preserve tenant isolation and authorization rules
-- update documentation when behavior or trust boundaries change
-- avoid unrelated refactors
+A pull request should explain:
 
-## Database changes
+- the problem being solved;
+- the scope and intentionally excluded work;
+- security or tenant-boundary implications;
+- migrations, configuration, or environment-variable changes;
+- how the change was validated.
 
-Do not make schema changes that only exist in the Supabase dashboard.
-
-All schema, function, policy, and privilege changes must be reproducible through ordered SQL migrations in `supabase/migrations`.
-
-New tenant-owned tables must have an explicit RLS model before they are used by application code.
+`quality` and `database-security` are release gates for `main`. Do not bypass failing checks to merge normal development work.
 
 ## Security-sensitive changes
 
-Changes involving authentication, RLS, memberships, roles, tenant selection, security-definer functions, or privileged environment variables require extra review.
+Treat authentication, authorization, RLS, SECURITY DEFINER functions, invitation tokens, redirects, cookies, and tenant identifiers as trust boundaries. Security-sensitive changes require explicit validation of failure cases, not only the happy path.
 
-Do not weaken database authorization because an equivalent check exists in the UI or application layer.
+Do not publish exploitable vulnerability details in a normal issue. Follow [`SECURITY.md`](SECURITY.md) for private reporting guidance.
 
-## Style
+## Scope discipline
 
-Prefer readable, direct code over unnecessary abstraction. Veyra is a reference implementation first; contributors should be able to understand critical authorization paths without navigating a framework of internal wrappers.
-
-## Reporting vulnerabilities
-
-Do not open a public issue for a suspected security vulnerability. Follow `SECURITY.md`.
+Veyra is intended to remain a foundation rather than a large framework. Prefer small, explicit changes over new abstractions that do not solve a current product or security need.
