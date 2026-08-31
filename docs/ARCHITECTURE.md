@@ -57,6 +57,21 @@ Important invariants:
 - an active tenant must retain at least one active owner
 - active memberships require an acceptance timestamp
 
+### `tenant_invitations`
+
+Stores pending workspace invitations without persisting plaintext invitation tokens.
+
+Important invariants:
+- invitation administration is owner-scoped to the target tenant
+- `super_admin` is not a valid invitation role
+- only a token hash is persisted in Postgres
+- an invitation must be unexpired and unaccepted before it can be used
+- the authenticated account email must match the invited email
+- accepting an invitation creates or activates membership only in the invitation's tenant
+- accepted invitation tokens cannot be replayed
+
+Invitation creation and acceptance use narrowly scoped `security definer` RPCs. Cryptographic functions are schema-qualified so their resolution does not depend on the RPC `search_path`.
+
 ### `user_tenant_preferences`
 
 Stores the user's currently selected tenant.
@@ -83,6 +98,21 @@ The database function performs the operation atomically:
 6. marks onboarding as completed when appropriate
 
 Keeping this sequence in a database function avoids intermediate states such as a tenant without an owner.
+
+## Workspace invitations
+
+Workspace invitations are managed through `public.create_tenant_invitation(...)` and `public.accept_tenant_invitation(...)`.
+
+The invitation boundary deliberately separates the plaintext token from persisted state:
+
+1. an owner requests an invitation for the active tenant
+2. the RPC generates a cryptographically random token and stores only its SHA-256 hash
+3. the raw token is returned only for invitation-link delivery
+4. acceptance hashes the supplied token and resolves a single pending, unexpired invitation
+5. the authenticated user's account email must match the invitation email
+6. membership activation, invitation acceptance, and active-tenant preference update happen in one database transaction
+
+Application code must never treat a token or tenant identifier as authorization by itself. Authorization remains enforced by the RPC checks and RLS policies.
 
 ## Active tenant selection
 
@@ -126,6 +156,7 @@ Several database helpers use `security definer` so RLS policies can safely evalu
 
 When adding new security-definer functions:
 - use an explicit `search_path`
+- schema-qualify extension functions and other security-sensitive dependencies
 - keep the function narrowly scoped
 - revoke public execution unless intentionally exposed
 - grant execution only to the minimum required database role
@@ -148,6 +179,21 @@ The browser receives only public Supabase configuration:
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 
 Service-role keys and other privileged credentials must never use a `NEXT_PUBLIC_` prefix and must never be exposed to client components.
+
+## Migration boundary
+
+`supabase/migrations` is the canonical ordered schema ledger for the repository. Hosted Supabase tracks applied migration versions separately in `supabase_migrations.schema_migrations`, so the two histories must stay aligned.
+
+Migration rules:
+- already-applied migration versions are immutable public history; do not rename or delete them after deployment
+- already-applied migration SQL must not be rewritten in place; deliver changes through a new forward migration
+- each migration version must be unique
+- byte-identical duplicate migration files are rejected by CI
+- the README migration manifest must match the repository ledger
+- remote schema changes must be delivered through migrations rather than undocumented Dashboard/SQL-editor edits
+- before deleting or renaming a migration during ledger repair, verify its status against every shared remote database that may have applied it
+
+See [`docs/MIGRATIONS.md`](MIGRATIONS.md) for the operational migration workflow and ledger-reconciliation rules.
 
 ## Current directory boundaries
 
@@ -181,7 +227,8 @@ supabase/migrations/   database schema, functions and RLS policies
 7. Cross-tenant queries require an explicit, reviewed platform-level use case.
 8. Server actions and routes must validate user input and authorization independently.
 9. Schema changes are delivered through ordered migrations, not undocumented dashboard edits.
-10. Documentation must be updated when a security or trust boundary changes.
+10. Applied migration history is immutable; fixes are forward-only.
+11. Documentation must be updated when a security or trust boundary changes.
 
 ## Near-term evolution
 
