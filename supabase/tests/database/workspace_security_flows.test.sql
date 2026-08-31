@@ -93,32 +93,33 @@ select is(
   'a non-owner only sees their own workspace'
 );
 
-select is(
-  (
-    with changed as (
-      update public.tenants
-      set name = 'Advisor changed workspace'
-      where id = '10000000-0000-0000-0000-000000000001'
-      returning id
-    )
-    select count(*)::integer from changed
-  ),
-  0,
-  'a non-owner cannot update workspace settings'
-);
+update public.tenants
+set name = 'Advisor changed workspace'
+where id = '10000000-0000-0000-0000-000000000001';
 
 select is(
   (
-    with changed as (
-      update public.tenant_memberships
-      set role = 'mechanic'
-      where tenant_id = '10000000-0000-0000-0000-000000000001'
-        and user_id = '00000000-0000-0000-0000-000000000002'
-      returning id
-    )
-    select count(*)::integer from changed
+    select name
+    from public.tenants
+    where id = '10000000-0000-0000-0000-000000000001'
   ),
-  0,
+  'Workspace A',
+  'a non-owner cannot update workspace settings'
+);
+
+update public.tenant_memberships
+set role = 'mechanic'
+where tenant_id = '10000000-0000-0000-0000-000000000001'
+  and user_id = '00000000-0000-0000-0000-000000000002';
+
+select is(
+  (
+    select role::text
+    from public.tenant_memberships
+    where tenant_id = '10000000-0000-0000-0000-000000000001'
+      and user_id = '00000000-0000-0000-0000-000000000002'
+  ),
+  'service_advisor',
   'a non-owner cannot change membership roles'
 );
 
@@ -143,63 +144,83 @@ select set_config(
 );
 set local role authenticated;
 
+update public.tenants
+set name = 'Workspace A updated'
+where id = '10000000-0000-0000-0000-000000000001';
+
 select is(
   (
-    with changed as (
-      update public.tenants
-      set name = 'Workspace A updated'
-      where id = '10000000-0000-0000-0000-000000000001'
-      returning id
-    )
-    select count(*)::integer from changed
+    select name
+    from public.tenants
+    where id = '10000000-0000-0000-0000-000000000001'
   ),
-  1,
+  'Workspace A updated',
   'an owner can update their workspace settings'
 );
 
+update public.tenants
+set name = 'Workspace B compromised'
+where id = '10000000-0000-0000-0000-000000000002';
+
+reset role;
+
 select is(
   (
-    with changed as (
-      update public.tenants
-      set name = 'Workspace B compromised'
-      where id = '10000000-0000-0000-0000-000000000002'
-      returning id
-    )
-    select count(*)::integer from changed
+    select name
+    from public.tenants
+    where id = '10000000-0000-0000-0000-000000000002'
   ),
-  0,
+  'Workspace B',
   'an owner cannot update another tenant workspace'
 );
 
-select is(
-  (
-    with changed as (
-      update public.tenant_memberships
-      set role = 'mechanic'
-      where tenant_id = '10000000-0000-0000-0000-000000000001'
-        and user_id = '00000000-0000-0000-0000-000000000002'
-      returning id
-    )
-    select count(*)::integer from changed
-  ),
-  1,
-  'an owner can change a role inside their workspace'
+select set_config(
+  'request.jwt.claim.sub',
+  '00000000-0000-0000-0000-000000000001',
+  true
 );
+set local role authenticated;
+
+update public.tenant_memberships
+set role = 'mechanic'
+where tenant_id = '10000000-0000-0000-0000-000000000001'
+  and user_id = '00000000-0000-0000-0000-000000000002';
 
 select is(
   (
-    with changed as (
-      update public.tenant_memberships
-      set role = 'mechanic'
-      where tenant_id = '10000000-0000-0000-0000-000000000002'
-        and user_id = '00000000-0000-0000-0000-000000000003'
-      returning id
-    )
-    select count(*)::integer from changed
+    select role::text
+    from public.tenant_memberships
+    where tenant_id = '10000000-0000-0000-0000-000000000001'
+      and user_id = '00000000-0000-0000-0000-000000000002'
   ),
-  0,
+  'mechanic',
+  'an owner can change a role inside their workspace'
+);
+
+update public.tenant_memberships
+set role = 'mechanic'
+where tenant_id = '10000000-0000-0000-0000-000000000002'
+  and user_id = '00000000-0000-0000-0000-000000000003';
+
+reset role;
+
+select is(
+  (
+    select role::text
+    from public.tenant_memberships
+    where tenant_id = '10000000-0000-0000-0000-000000000002'
+      and user_id = '00000000-0000-0000-0000-000000000003'
+  ),
+  'owner',
   'an owner cannot change a role in another tenant'
 );
+
+select set_config(
+  'request.jwt.claim.sub',
+  '00000000-0000-0000-0000-000000000001',
+  true
+);
+set local role authenticated;
 
 select throws_ok(
   $test$
@@ -240,17 +261,18 @@ select ok(
   'invitation creation returns a random plaintext token'
 );
 
+delete from public.tenant_invitations
+where tenant_id = '10000000-0000-0000-0000-000000000001'
+  and email = 'revoke-own@example.com';
+
 select is(
   (
-    with deleted as (
-      delete from public.tenant_invitations
-      where tenant_id = '10000000-0000-0000-0000-000000000001'
-        and email = 'revoke-own@example.com'
-      returning id
-    )
-    select count(*)::integer from deleted
+    select count(*)::integer
+    from public.tenant_invitations
+    where tenant_id = '10000000-0000-0000-0000-000000000001'
+      and email = 'revoke-own@example.com'
   ),
-  1,
+  0,
   'an owner can revoke a pending invitation in their workspace'
 );
 
@@ -279,18 +301,28 @@ select set_config(
 );
 set local role authenticated;
 
+delete from public.tenant_invitations
+where tenant_id = '10000000-0000-0000-0000-000000000002';
+
+reset role;
+
 select is(
   (
-    with deleted as (
-      delete from public.tenant_invitations
-      where tenant_id = '10000000-0000-0000-0000-000000000002'
-      returning id
-    )
-    select count(*)::integer from deleted
+    select count(*)::integer
+    from public.tenant_invitations
+    where tenant_id = '10000000-0000-0000-0000-000000000002'
+      and email = 'foreign@example.com'
   ),
-  0,
+  1,
   'an owner cannot revoke another tenant invitation'
 );
+
+select set_config(
+  'request.jwt.claim.sub',
+  '00000000-0000-0000-0000-000000000001',
+  true
+);
+set local role authenticated;
 
 insert into test_tokens (name, token)
 select
