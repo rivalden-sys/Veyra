@@ -23,6 +23,7 @@ The repository is intentionally focused on a reliable foundation rather than a l
 - Supabase Auth
 - Google OAuth and Magic Link authentication flows
 - User profiles
+- Self-service profile settings with server-side validation
 - Tenant/workspace creation
 - Tenant memberships and roles
 - Active tenant preference
@@ -170,9 +171,10 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the current trust boundar
 ## Project structure
 
 ```text
-app/                    Next.js routes, auth, onboarding and dashboard
+app/                    Next.js routes, auth, onboarding, dashboard and account settings
 components/             shared UI and tenant/dashboard components
 lib/auth/               authentication guards
+lib/profile/            profile input validation
 lib/supabase/           Supabase client/server/proxy configuration
 lib/tenant/             tenant context and actions
 supabase/migrations/    database schema and RLS migrations
