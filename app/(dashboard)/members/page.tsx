@@ -4,8 +4,8 @@ import {
   revokeWorkspaceInvitation,
   updateMemberRole,
 } from "@/app/(dashboard)/members/actions";
+import { PendingSubmitButton } from "@/components/forms/pending-submit-button";
 import { InviteLink } from "@/components/members/invite-link";
-import { PendingSubmitButton } from "@/components/members/pending-submit-button";
 import { createClient } from "@/lib/supabase/server";
 import { getTenantContext } from "@/lib/tenant/context";
 
