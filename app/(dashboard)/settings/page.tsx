@@ -1,4 +1,5 @@
 import { Settings } from "lucide-react";
+import { PendingSubmitButton } from "@/components/forms/pending-submit-button";
 import { updateWorkspaceSettings } from "@/app/(dashboard)/settings/actions";
 import { getTenantContext } from "@/lib/tenant/context";
 import {
@@ -137,12 +138,12 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           </div>
 
           {isOwner ? (
-            <button
-              className="inline-flex h-11 items-center justify-center rounded-md bg-[#0f766e] px-4 text-sm font-semibold text-white transition hover:bg-[#0b615b]"
-              type="submit"
+            <PendingSubmitButton
+              className="inline-flex h-11 items-center justify-center rounded-md bg-[#0f766e] px-4 text-sm font-semibold text-white transition hover:bg-[#0b615b] disabled:cursor-not-allowed disabled:opacity-70"
+              pendingLabel="Saving..."
             >
               Save settings
-            </button>
+            </PendingSubmitButton>
           ) : (
             <p className="text-sm text-[#59616d]">
               Only workspace owners can edit these settings.
