@@ -2,7 +2,7 @@
 
 Veyra uses two CI validation layers:
 
-1. Application and repository quality checks: migration-ledger integrity, authentication-routing security, timezone runtime validation, lint, TypeScript typechecking, and a production Next.js build.
+1. Application and repository quality checks: migration-ledger integrity, authentication-routing security, profile-input validation, timezone runtime validation, lint, TypeScript typechecking, and a production Next.js build.
 2. Database security checks: a fresh local Supabase Postgres instance replays every migration and runs the pgTAP suite in `supabase/tests/database`.
 
 ## Application and repository checks
@@ -11,6 +11,7 @@ Veyra uses two CI validation layers:
 npm ci
 node scripts/validate-migrations.mjs
 node scripts/validate-auth-routing.mjs
+node scripts/validate-profile-input.mjs
 node scripts/validate-timezones.mjs
 npm run lint
 npm run typecheck
@@ -20,6 +21,8 @@ npm run build
 `validate-migrations.mjs` verifies that migration versions are unique, byte-identical migration files do not exist under different versions, and the migration manifest in `README.md` exactly matches `supabase/migrations`.
 
 `validate-auth-routing.mjs` executes the shared authentication-routing helpers and checks route-level invariants. It covers safe same-origin `next` handling, open-redirect bypass cases, canonical callback construction, production `NEXT_PUBLIC_SITE_URL` requirements, POST-only sign-out, stable public auth errors, and accessible login feedback.
+
+`validate-profile-input.mjs` executes the profile input parser used by Account Settings. It verifies trimming and nullable optional fields, BCP 47 locale canonicalization, length limits, control/format-character rejection, and invalid-locale handling.
 
 Migration workflow and drift-recovery rules are documented in [`MIGRATIONS.md`](MIGRATIONS.md).
 
@@ -66,4 +69,4 @@ All test data is created inside a transaction and rolled back at the end of the 
 
 ## CI
 
-GitHub Actions runs migration-ledger, auth-routing, and timezone validation before lint/typecheck/build and pins the Supabase CLI version for the database job. The `database-security` job starts a fresh database for every run, replays the full source-controlled migration chain, and executes the pgTAP suite. No remote Supabase project credentials or production data are used by these tests.
+GitHub Actions runs migration-ledger, auth-routing, profile-input, and timezone validation before lint/typecheck/build and pins the Supabase CLI version for the database job. Push validation covers both `main` and the repository default branch, `rename-to-veyra-foundation`. The `database-security` job starts a fresh database for every run, replays the full source-controlled migration chain, and executes the pgTAP suite. No remote Supabase project credentials or production data are used by these tests.
