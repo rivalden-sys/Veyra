@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - rename-to-veyra-foundation
   pull_request:
 
 permissions:
@@ -36,6 +37,9 @@ jobs:
 
       - name: Validate auth routing
         run: node scripts/validate-auth-routing.mjs
+
+      - name: Validate profile input
+        run: node scripts/validate-profile-input.mjs
 
       - name: Validate timezone runtime
         run: node scripts/validate-timezones.mjs

@@ -142,8 +142,10 @@ Open `http://localhost:3000`.
 ## Quality checks
 
 ```bash
-node scripts/validate-timezones.mjs
 node scripts/validate-migrations.mjs
+node scripts/validate-auth-routing.mjs
+node scripts/validate-profile-input.mjs
+node scripts/validate-timezones.mjs
 npm run lint
 npm run typecheck
 npm run build
